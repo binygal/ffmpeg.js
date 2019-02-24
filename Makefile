@@ -77,7 +77,7 @@ build/opus/configure:
 build/opus/dist/lib/libopus.so: build/opus/configure
 	cd build/opus && \
 	emconfigure ./configure \
-		CFLAGS=-O3 \
+		CFLAGS=-O2 \
 		--prefix="$$(pwd)/dist" \
 		--disable-static \
 		--disable-doc \
@@ -87,7 +87,8 @@ build/opus/dist/lib/libopus.so: build/opus/configure
 		--disable-intrinsics \
 		&& \
 	emmake make -j8 && \
-	emmake make install
+	emmake make install && \
+	cp ./dist/lib/libopus.dylib ./dist/lib/libopus.so
 
 build/freetype/builds/unix/configure:
 	cd build/freetype && ./autogen.sh
@@ -100,7 +101,7 @@ build/freetype/dist/lib/libfreetype.so: build/freetype/builds/unix/configure
 	git reset --hard && \
 	patch -p1 < ../freetype-asmjs.patch && \
 	emconfigure ./configure \
-		CFLAGS="-O3" \
+		CFLAGS="-O2" \
 		--prefix="$$(pwd)/dist" \
 		--host=x86-none-linux \
 		--build=x86_64 \
@@ -122,7 +123,7 @@ build/fribidi/dist/lib/libfribidi.so: build/fribidi/configure
 	git reset --hard && \
 	patch -p1 < ../fribidi-make.patch && \
 	emconfigure ./configure \
-		CFLAGS=-O3 \
+		CFLAGS=-O2 \
 		NM=llvm-nm \
 		--prefix="$$(pwd)/dist" \
 		--disable-dependency-tracking \
@@ -130,7 +131,8 @@ build/fribidi/dist/lib/libfribidi.so: build/fribidi/configure
 		--without-glib \
 		&& \
 	emmake make -j8 && \
-	emmake make install
+	emmake make install && \
+	cp ./dist/lib/libfribidi.dylib ./dist/lib/libfribidi.so
 
 build/libass/configure:
 	cd build/libass && ./autogen.sh
@@ -138,7 +140,7 @@ build/libass/configure:
 build/libass/dist/lib/libass.so: build/libass/configure $(LIBASS_DEPS)
 	cd build/libass && \
 	EM_PKG_CONFIG_PATH=$(LIBASS_PC_PATH) emconfigure ./configure \
-		CFLAGS="-O3" \
+		CFLAGS="-O2" \
 		--prefix="$$(pwd)/dist" \
 		--disable-static \
 		--disable-enca \
@@ -148,7 +150,8 @@ build/libass/dist/lib/libass.so: build/libass/configure $(LIBASS_DEPS)
 		--disable-asm \
 		&& \
 	emmake make -j8 && \
-	emmake make install
+	emmake make install && \
+	cp ./dist/lib/libass.dylib ./dist/lib/libass.so
 
 build/libvpx/dist/lib/libvpx.so:
 	cd build/libvpx && \
@@ -279,6 +282,8 @@ build/ffmpeg-webm/ffmpeg.bc: $(WEBM_SHARED_DEPS)
 		--extra-cflags="-I../libvpx/dist/include" \
 		--extra-ldflags="-L../libvpx/dist/lib" \
 		&& \
+	sed -i.bak -e 's/#define HAVE_ARC4RANDOM 1/#define HAVE_ARC4RANDOM 0/' ./config.h &&\
+	sed -i.bak -e 's/HAVE_ARC4RANDOM=yes/HAVE_ARC4RANDOM=no/' ./config.mak &&\
 	emmake make -j8 && \
 	cp ffmpeg ffmpeg.bc
 
@@ -296,6 +301,8 @@ build/ffmpeg-mp4/ffmpeg.bc: $(MP4_SHARED_DEPS)
 		--extra-cflags="-I../lame/dist/include" \
 		--extra-ldflags="-L../lame/dist/lib" \
 		&& \
+	sed -i.bak -e 's/#define HAVE_ARC4RANDOM 1/#define HAVE_ARC4RANDOM 0/' ./config.h &&\
+	sed -i.bak -e 's/HAVE_ARC4RANDOM=yes/HAVE_ARC4RANDOM=no/' ./config.mak &&\
 	emmake make -j8 && \
 	cp ffmpeg ffmpeg.bc
 
@@ -304,9 +311,11 @@ build/ffmpeg-mp4/ffmpeg.bc: $(MP4_SHARED_DEPS)
 # for simple tests and 32M tends to run slower than 64M.
 EMCC_COMMON_ARGS = \
 	--closure 1 \
+	-g4 \
 	-s TOTAL_MEMORY=67108864 \
 	-s OUTLINING_LIMIT=20000 \
-	-O3 --memory-init-file 0 \
+	-s "BINARYEN_TRAP_MODE='clamp'" \
+	-O2 --memory-init-file 0 \
 	--pre-js $(PRE_JS) \
 	-o $@
 
